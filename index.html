@@ -1,48 +1,186 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>省券雷达</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 40px 20px;
-      background: #f5f6fa;
-      color: #222;
-      font-family: Arial, "Microsoft YaHei", sans-serif;
-    }
-
-    .box {
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 30px 20px;
-      text-align: center;
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 8px 25px #00000012;
-    }
-
-    h1 {
-      color: #ff6b35;
-    }
-
-    button {
-      padding: 12px 24px;
-      color: white;
-      background: #ff6b35;
-      border: 0;
-      border-radius: 10px;
-      font-size: 16px;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ff6b35">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>省券雷达</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px;background:#f5f6fa;color:#222;font-family:Arial,"Microsoft YaHei",sans-serif}
+main{max-width:680px;margin:auto}
+.card{margin:16px 0;padding:20px;background:#fff;border-radius:20px;box-shadow:0 6px 20px #0000000b}
+h1{margin:0;color:#ff6b35;font-size:28px}
+h2{font-size:18px;margin:0 0 12px}
+p{line-height:1.6}
+textarea{width:100%;height:120px;padding:14px;border:1px solid #ddd;border-radius:12px;resize:vertical;font-size:15px}
+button{padding:12px 18px;border:0;border-radius:12px;font-size:15px;font-weight:bold}
+.primary{color:#fff;background:#ff6b35}
+.secondary{color:#e64a19;background:#fff1e8}
+.buttons{display:flex;gap:10px;margin-top:12px}
+.buttons button{flex:1}
+#result{border-left:5px solid #ff6b35}
+.notice{padding:12px;color:#865000;background:#fff7e6;border-radius:10px;font-size:13px}
+#link{word-break:break-all;color:#666;font-size:13px}
+.small{color:#777;font-size:13px}
+[hidden]{display:none!important}
+</style>
 </head>
+
 <body>
-  <div class="box">
+<main>
+  <section class="card">
     <h1>省券雷达</h1>
-    <p>页面部署成功！</p>
-    <p>小米14测试版正在准备中。</p>
-    <button onclick="alert('测试成功')">点击测试</button>
-  </div>
+    <p>全平台优惠券查询助手</p>
+    <p class="small">测试版 v0.2｜复制链接即可识别平台</p>
+  </section>
+
+  <section class="card">
+    <h2>粘贴商品分享文案或链接</h2>
+
+    <textarea
+      id="input"
+      placeholder="请粘贴淘宝、京东、抖音、美团或拼多多的分享文案……"
+    ></textarea>
+
+    <div class="buttons">
+      <button id="paste" class="secondary">粘贴</button>
+      <button id="sample" class="secondary">示例</button>
+      <button id="query" class="primary">立即查券</button>
+    </div>
+
+    <p id="message" class="small"></p>
+  </section>
+
+  <section id="result" class="card" hidden>
+    <h2 id="platform"></h2>
+    <p id="link"></p>
+
+    <div class="notice">
+      当前为测试版，尚未接入平台真实优惠券接口。
+      下面只显示识别结果，真实优惠以官方页面为准。
+    </div>
+
+    <p>✅ 已识别平台链接</p>
+    <p>✅ 下一步将接入官方优惠接口</p>
+    <p>✅ 领取时跳转对应官方平台</p>
+
+    <button id="open" class="primary">打开官方页面核验</button>
+  </section>
+
+  <section class="card">
+    <h2>使用说明</h2>
+    <p class="small">
+      在淘宝、京东、抖音、美团等平台点击分享，复制分享文案，
+      返回本应用粘贴后即可查询。
+    </p>
+    <p class="small">
+      本版本只做链接识别，不会获取账号、密码或验证码。
+    </p>
+  </section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+
+const platforms=[
+  ["淘宝/天猫",["taobao.com","tmall.com","tb.cn"]],
+  ["京东",["jd.com","3.cn"]],
+  ["抖音",["douyin.com"]],
+  ["美团",["meituan.com","dianping.com","dpurl.cn"]],
+  ["淘宝闪购",["ele.me"]],
+  ["拼多多",["pinduoduo.com","yangkeduo.com"]]
+];
+
+let current=null;
+
+function sameHost(host,domain){
+  return host===domain||host.endsWith("."+domain);
+}
+
+function detect(text){
+  const found=text.match(/https?:\/\/[^\s]+/i);
+  if(!found)return null;
+
+  const raw=found[0].replace(/[，。！？；;）)\]】]+$/g,"");
+  let url;
+
+  try{
+    url=new URL(raw);
+  }catch(e){
+    return null;
+  }
+
+  const host=url.hostname.toLowerCase();
+  let name=null;
+
+  for(const item of platforms){
+    if(item[1].some(domain=>sameHost(host,domain))){
+      name=item[0];
+      break;
+    }
+  }
+
+  if((text.includes("淘宝闪购")||text.includes("饿了么"))&&
+     (sameHost(host,"taobao.com")||sameHost(host,"tb.cn"))){
+    name="淘宝闪购";
+  }
+
+  if(!name)return null;
+
+  return {name:name,url:url.href,host:host};
+}
+
+function query(){
+  const result=detect($("input").value.trim());
+
+  if(!result){
+    $("result").hidden=true;
+    $("message").textContent="没有识别到支持的平台链接";
+    return;
+  }
+
+  current=result;
+  $("platform").textContent="已识别： "+result.name;
+  $("link").textContent=result.url;
+  $("message").textContent="识别成功";
+  $("result").hidden=false;
+}
+
+$("query").onclick=query;
+
+$("sample").onclick=()=>{
+  $("input").value="测试商品 https://item.jd.com/100000000000.html";
+};
+
+$("paste").onclick=async()=>{
+  try{
+    $("input").value=await navigator.clipboard.readText();
+    $("message").textContent="已粘贴";
+  }catch(e){
+    $("message").textContent="请长按输入框，然后选择“粘贴”";
+  }
+};
+
+$("open").onclick=()=>{
+  if(current){
+    window.open(current.url,"_blank");
+  }
+};
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
+
+const params=new URLSearchParams(location.search);
+const shared=[params.get("title"),params.get("text"),params.get("url")]
+  .filter(Boolean).join(" ");
+
+if(shared){
+  $("input").value=shared;
+  setTimeout(query,200);
+}
+</script>
 </body>
 </html>
